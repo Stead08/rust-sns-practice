@@ -1,0 +1,26 @@
+[package]
+name = "rust-sns"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+async-session = "3.0.0"
+async-sqlx-session = "0.4.0"
+axum = {version="0.6.18", features=["headers", "ws", "http2", "tower-log"]}
+axum-extra = {version="0.7.4", features=["cookie-private"]}
+tokio = {version="1.28.1", features=["full"]}
+tower-http = {version="0.4.0", features=["cors"]}
+futures = "0.3.17"
+serde = "1.0.163"
+serde_json = "1.0.70"
+sqlx = {version="0.6.3", features=["postgres", "runtime-tokio-native-tls", "chrono", "json"]}
+sea-orm = {version="0.11.3", features=["sqlx-postgres", "runtime-tokio-native-tls", "macros"]}
+dotenv = "0.15.0"
+log = "0.4"
+env_logger = "0.10.0"
+bcrypt = "0.14.0"
+rand = "0.8.4"
+time= "0.3.21"
