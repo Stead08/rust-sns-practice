@@ -2,12 +2,12 @@ version: "3.8"
 services:
   rust_web_container:
     build:
-      dockerfile: rust/Dockerfile
+      dockerfile: docker/rust/Dockerfile
     container_name: rust_web_container
     tty: true
   postgres_container:
     container_name: postgres_container
-    build: postgres
+    build: docker/postgres
     restart: always
     ports:
       - "54321:5432"

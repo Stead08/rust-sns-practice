@@ -1,4 +1,1 @@
-FROM ubuntu:latest
-LABEL authors="masaharuinomata"
-
-ENTRYPOINT ["top", "-b"]
+FROM postgres:11

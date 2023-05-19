@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import styles from './Ruitter.module.scss';
 
-const API_SIGN_UP_PATH = '/api/users';
-const API_LOG_IN_PATH = '/api/sessions';
-const API_TWEET_PATH = '/api/user_tweets';
-const API_FOLLOW_PATH = '/api/follow_relations';
-const API_TIMELINE_PATH = '/api/pages/timeline';
+const API_SIGN_UP_PATH = '/api/auth/register';
+const API_LOG_IN_PATH = '/api/auth/login';
+const API_TWEET_PATH = '/api/content/user_tweets';
+const API_FOLLOW_PATH = '/api/relation/follow';
+const API_TIMELINE_PATH = '/api/timeline';
 
 type TimelineItem = {
-  name: string,
+  username: string,
   content: string,
 };
 
@@ -20,24 +20,27 @@ const createPostParam = ({obj}: {obj: Record<string, unknown>}) => ({
 
 const Ruitter: ()=>JSX.Element =() => {
   const [signUpName, setSignUpName] = useState<string>('');
+  const [signUpEmail, setSignUpEmail] = useState<string>('');
+  const [signUpPassword, setSignUpPassword] = useState<string>('');
   const [logInName, setLogInName] = useState<string>('');
+  const [logInPassword, setLogInPassword] = useState<string>('');
   const [tweetDraft, setTweetDraft] = useState<string>('');
   const [followeeName, setFolloweeName] = useState<string>('');
   const [serverTexts, setServerTexts] = useState<string[]>([]);
   const [tweets, setTweets] = useState<TimelineItem[]>([]);
 
   const onSignUp = async () => {
-    const res = await fetch(API_SIGN_UP_PATH, createPostParam({obj: {name: signUpName}})); 
+    const res = await fetch(API_SIGN_UP_PATH, createPostParam({obj: {username: signUpName, email: signUpEmail, password: signUpPassword}}));
     setServerTexts([res.ok ? `ユーザー登録成功: ${logInName}` : 'ユーザー登録失敗']);
   }
 
   const onLogin = async () => {
-    const res = await fetch(API_LOG_IN_PATH, createPostParam({obj: {name: logInName}})); 
+    const res = await fetch(API_LOG_IN_PATH, createPostParam({obj: {username: logInName, password: logInPassword}}));
     setServerTexts([res.ok ? `ログイン成功` : 'ログイン失敗']);
   }
 
   const onFollow = async () => {
-    const res = await fetch(API_FOLLOW_PATH, createPostParam({obj: {name: followeeName}})); 
+    const res = await fetch(API_FOLLOW_PATH, createPostParam({obj: {username: followeeName}}));
     setServerTexts([res.ok ? `フォロー成功` : 'フォロー失敗']);
   }
 
@@ -70,6 +73,18 @@ const Ruitter: ()=>JSX.Element =() => {
               onChange={event => { setSignUpName(event.target.value); }}
               placeholder='your new name'
           />
+          <input
+                style={{ width: '100%' }}
+                value={signUpEmail}
+                onChange={event => { setSignUpEmail(event.target.value); }}
+                placeholder='your new email'
+            />
+            <input
+                style={{ width: '100%' }}
+                value={signUpPassword}
+                onChange={event => { setSignUpPassword(event.target.value); }}
+                placeholder='your new password'
+            />
           <button type="button" onClick={onSignUp}>ユーザー登録</button>
 
           <input
@@ -78,6 +93,12 @@ const Ruitter: ()=>JSX.Element =() => {
               onChange={event => { setLogInName(event.target.value); }}
               placeholder='your registered name'
           />
+            <input
+                style={{ width: '100%' }}
+                value={logInPassword}
+                onChange={event => { setLogInPassword(event.target.value); }}
+                placeholder='your registered password'
+            />
           <button type="button" onClick={onLogin}>ログイン</button>
 
           <input
@@ -107,7 +128,7 @@ const Ruitter: ()=>JSX.Element =() => {
           </h2>
           <button type="button" onClick={onFetchTimeLine}>タイムライン取得</button>
           {
-            tweets.map((tweet, index)=><div key={`${index}_${tweet.name}_${tweet.content}`}>{`${tweet.name}: ${tweet.content}`}</div>)
+            tweets.map((tweet, index)=><div key={`${index}_${tweet.username}_${tweet.content}`}>{`${tweet.username}: ${tweet.content}`}</div>)
           }
             </div>
         </div>
