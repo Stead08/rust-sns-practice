@@ -216,8 +216,8 @@ pub async fn login(
             let result = SessionEntity::insert(session)
                 .on_conflict(
                     // on conflict do update
-                    sea_query::OnConflict::column(models::sessions::Column::UserId)
-                        .update_column(models::sessions::Column::SessionId)
+                    sea_query::OnConflict::column(sessions::Column::UserId)
+                        .update_column(sessions::Column::SessionId)
                         .to_owned(),
                 )
                 .exec(&state.postgres);
@@ -255,7 +255,7 @@ pub async fn logout(
 
     //削除対象を取得する
     let target = models::sessions::Entity::find()
-        .filter(models::sessions::Column::SessionId.eq(cookie))
+        .filter(sessions::Column::SessionId.eq(cookie))
         .one(&state.postgres)
         .await;
 
@@ -287,7 +287,7 @@ pub async fn create_tweet(
     };
 
     let target = models::sessions::Entity::find()
-        .filter(models::sessions::Column::SessionId.eq(cookie))
+        .filter(sessions::Column::SessionId.eq(cookie))
         .one(&state.postgres)
         .await;
 
