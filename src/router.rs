@@ -17,9 +17,10 @@ use axum::routing::{get, post};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::PrivateCookieJar;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, Order, QueryFilter, QueryOrder, QuerySelect, sea_query};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Order, QueryFilter, QueryOrder, QuerySelect, sea_query};
 use sea_orm::prelude::DateTimeWithTimeZone;
 use serde::{Serialize, Deserialize};
+use serde_json::json;
 use tower_http::cors::CorsLayer;
 use crate::{AppState, models};
 
@@ -42,7 +43,9 @@ pub fn api_router(state: AppState) -> Router {
     let auth_router = Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
-        .route("/logout", get(logout));
+        .route("/logout", get(logout))
+        .route("/me", get(get_me))
+        .route("/check", get(auth_check));
 
     let content_router = Router::new()
         .route("/user_tweets", post(create_tweet))
@@ -105,6 +108,38 @@ pub async fn validate_session<B>(
         ),
     }
 }
+
+pub async fn auth_check(
+    State(state) : State<AppState>,
+    jar: PrivateCookieJar,
+) -> impl IntoResponse {
+    let Some(cookie) = jar.get("foo").map(|cookie| cookie.value().to_owned()) else {
+        println!("{:?} Could not find a cookie in jar", jar);
+        return (StatusCode::FORBIDDEN, "ログインしてください".to_string()).into_response();
+    };
+
+    let find_session = Sessions::find()
+        .filter(sessions::Column::SessionId.eq(cookie))
+        .one(&state.postgres)
+        .await;
+
+    match find_session {
+        Ok(session) => match session {
+            Some(_) => (StatusCode::OK, "ログインしています".to_string()).into_response(),
+            None => (
+                StatusCode::FORBIDDEN,
+                "ログインしていません".to_string(),
+            )
+                .into_response(),
+        }
+        Err(_) => (
+            StatusCode::FORBIDDEN,
+            "ログインしていません".to_string(),
+        )
+            .into_response(),
+    }
+}
+
 
 #[derive(Deserialize)]
 pub struct RegisterDetails {
@@ -276,6 +311,45 @@ pub async fn create_tweet(
             }
         }
         Err(_) => (StatusCode::BAD_REQUEST).into_response()
+    }
+}
+
+pub async fn get_me(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+) -> impl IntoResponse {
+    let Some(cookie) = jar.get("foo").map(|cookie| cookie.value().to_owned()) else {
+        return (StatusCode::FORBIDDEN, "ログインしてください".to_string()).into_response();
+    };
+
+    let target = models::sessions::Entity::find()
+        .filter(models::sessions::Column::SessionId.eq(cookie))
+        .one(&state.postgres)
+        .await;
+
+    match target {
+        Ok(target) => {
+            let user_id = target.unwrap().user_id;
+            let user = models::users::Entity::find()
+                .filter(models::users::Column::Id.eq(user_id))
+                .one(&state.postgres)
+                .await;
+            match user {
+                Ok(user) => {
+                    let user = user.unwrap();
+                    let user = Model {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        password: "".to_string(),
+                        createdat: user.createdat,
+                    };
+                    Json(user).into_response()
+                }
+                Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+            }
+        }
+        Err(_) => (StatusCode::BAD_REQUEST).into_response(),
     }
 }
 #[derive(Serialize)]
