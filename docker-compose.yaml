@@ -4,6 +4,8 @@ services:
     build:
       dockerfile: docker/rust/Dockerfile
     container_name: rust_web_container
+    ports:
+      - "3000:3000"
     tty: true
   postgres_container:
     container_name: postgres_container
@@ -12,7 +14,7 @@ services:
     ports:
       - "54321:5432"
     volumes:
-      - ./postgres/init:/docker-entrypoint-initdb.d
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"

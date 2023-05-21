@@ -1,39 +1,38 @@
-use std::collections::HashMap;
-use async_session::chrono::{DateTime, Utc};
-use time::Duration;
 use crate::models::prelude::{Sessions, Users};
 use crate::models::sessions::ActiveModel as SessionModel;
 use crate::models::sessions::Entity as SessionEntity;
-use crate::models::{sessions, users};
 use crate::models::users::{ActiveModel as UserModel, Model};
+use crate::models::{sessions, users};
 use axum::extract::State;
-use axum::http::{Method, Request, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::{Json, middleware, Router};
 use axum::headers::HeaderValue;
 use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN};
+use axum::http::{Method, Request, StatusCode};
 use axum::middleware::Next;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
+use axum::{middleware, Json, Router};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::PrivateCookieJar;
-use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Order, QueryFilter, QueryOrder, QuerySelect, sea_query};
 use sea_orm::prelude::DateTimeWithTimeZone;
-use serde::{Serialize, Deserialize};
-use serde_json::json;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{
+    sea_query, ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, NotSet, Order,
+    QueryFilter, QueryOrder, QuerySelect,
+};
+use serde::{Deserialize, Serialize};
+use time::Duration;
+
+use crate::{models, AppState};
 use tower_http::cors::CorsLayer;
-use crate::{AppState, models};
 
 pub fn create_router(state: AppState) -> Router {
     let api_router = api_router(state);
 
     //APIルーターを/apiにネスト
-    Router::new()
-        .nest("/api", api_router)
+    Router::new().nest("/api", api_router)
 }
 
 pub fn api_router(state: AppState) -> Router {
-
     let cors = CorsLayer::new()
         .allow_credentials(true)
         .allow_methods(vec![Method::GET, Method::POST, Method::PUT, Method::DELETE])
@@ -54,12 +53,13 @@ pub fn api_router(state: AppState) -> Router {
             validate_session,
         ));
 
-    let timeline_router = Router::new()
-        .route("/", get(get_timeline))
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            validate_session,
-        ));
+    let timeline_router =
+        Router::new()
+            .route("/", get(get_timeline))
+            .route_layer(middleware::from_fn_with_state(
+                state.clone(),
+                validate_session,
+            ));
 
     let relation_router = Router::new()
         .route("/follow", post(create_follow))
@@ -109,10 +109,7 @@ pub async fn validate_session<B>(
     }
 }
 
-pub async fn auth_check(
-    State(state) : State<AppState>,
-    jar: PrivateCookieJar,
-) -> impl IntoResponse {
+pub async fn auth_check(State(state): State<AppState>, jar: PrivateCookieJar) -> impl IntoResponse {
     let Some(cookie) = jar.get("foo").map(|cookie| cookie.value().to_owned()) else {
         println!("{:?} Could not find a cookie in jar", jar);
         return (StatusCode::FORBIDDEN, "ログインしてください".to_string()).into_response();
@@ -126,20 +123,11 @@ pub async fn auth_check(
     match find_session {
         Ok(session) => match session {
             Some(_) => (StatusCode::OK, "ログインしています".to_string()).into_response(),
-            None => (
-                StatusCode::FORBIDDEN,
-                "ログインしていません".to_string(),
-            )
-                .into_response(),
-        }
-        Err(_) => (
-            StatusCode::FORBIDDEN,
-            "ログインしていません".to_string(),
-        )
-            .into_response(),
+            None => (StatusCode::FORBIDDEN, "ログインしていません".to_string()).into_response(),
+        },
+        Err(_) => (StatusCode::FORBIDDEN, "ログインしていません".to_string()).into_response(),
     }
 }
-
 
 #[derive(Deserialize)]
 pub struct RegisterDetails {
@@ -278,7 +266,7 @@ pub struct NewTweet {
     content: String,
 }
 pub async fn create_tweet(
-    State(state) : State<AppState>,
+    State(state): State<AppState>,
     jar: PrivateCookieJar,
     Json(new_tweet): Json<NewTweet>,
 ) -> impl IntoResponse {
@@ -310,14 +298,11 @@ pub async fn create_tweet(
                     .into_response(),
             }
         }
-        Err(_) => (StatusCode::BAD_REQUEST).into_response()
+        Err(_) => (StatusCode::BAD_REQUEST).into_response(),
     }
 }
 
-pub async fn get_me(
-    State(state): State<AppState>,
-    jar: PrivateCookieJar,
-) -> impl IntoResponse {
+pub async fn get_me(State(state): State<AppState>, jar: PrivateCookieJar) -> impl IntoResponse {
     let Some(cookie) = jar.get("foo").map(|cookie| cookie.value().to_owned()) else {
         return (StatusCode::FORBIDDEN, "ログインしてください".to_string()).into_response();
     };
@@ -359,9 +344,7 @@ struct Tweet {
     content: String,
     created_at: Option<DateTimeWithTimeZone>,
 }
-pub async fn get_timeline(
-    State(state) : State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_timeline(State(state): State<AppState>) -> impl IntoResponse {
     let tweets = models::user_tweets::Entity::find()
         .order_by(models::user_tweets::Column::CreatedAt, Order::Desc)
         .limit(100)
@@ -401,7 +384,7 @@ pub struct Follow {
 }
 
 pub async fn create_follow(
-    State(state) : State<AppState>,
+    State(state): State<AppState>,
     jar: PrivateCookieJar,
     Json(follow): Json<Follow>,
 ) -> impl IntoResponse {
@@ -418,7 +401,8 @@ pub async fn create_follow(
     let follower = models::sessions::Entity::find()
         .filter(models::sessions::Column::SessionId.eq(cookie))
         .one(&state.postgres)
-        .await.expect("failed to get session");
+        .await
+        .expect("failed to get session");
     match target {
         Ok(target) => {
             let target = target.unwrap();
@@ -438,6 +422,6 @@ pub async fn create_follow(
                     .into_response(),
             }
         }
-        Err(_) => (StatusCode::BAD_REQUEST).into_response()
+        Err(_) => (StatusCode::BAD_REQUEST).into_response(),
     }
 }
