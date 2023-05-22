@@ -1,6 +1,9 @@
 version: "3.8"
 services:
   rust_web_container:
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres_container:5432/postgres
+      - DOMAIN=localhost:8889
     build:
       dockerfile: docker/rust/Dockerfile
     container_name: rust_web_container
